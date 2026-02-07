@@ -6,6 +6,8 @@ Nginx 配置管理模块
 import os
 import subprocess
 import shutil
+import socket
+import json
 from pathlib import Path
 from typing import List, Optional
 from jinja2 import Template
@@ -56,6 +58,75 @@ class NginxManager:
             text=True,
             timeout=10
         )
+    
+    def _docker_api_exec_cmd(self, cmd: List[str]) -> tuple[int, str]:
+        """通过 Docker API 在容器内执行命令；返回 (exit_code, output)"""
+        try:
+            sock_path = '/var/run/docker.sock'
+            
+            # 创建 exec
+            req_data = json.dumps({
+                'AttachStdout': True, 'AttachStderr': True,
+                'Tty': False, 'Cmd': cmd
+            }).encode('utf-8')
+            req = (f"POST /containers/{self.nginx_container}/exec HTTP/1.1\r\n"
+                   "Host: docker\r\n"
+                   f"Content-Type: application/json\r\n"
+                   f"Content-Length: {len(req_data)}\r\n\r\n").encode('utf-8') + req_data
+            
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.connect(sock_path)
+            sock.sendall(req)
+            resp = b''
+            while True:
+                chunk = sock.recv(4096)
+                if not chunk: break
+                resp += chunk
+            sock.close()
+            
+            body = resp.split(b'\r\n\r\n', 1)[1] if b'\r\n\r\n' in resp else resp
+            exec_info = json.loads(body.decode('utf-8'))
+            exec_id = exec_info.get('Id', '')
+            
+            if not exec_id:
+                return 1, "无法创建 exec"
+            
+            # 启动 exec
+            req = (f"POST /exec/{exec_id}/start HTTP/1.1\r\n"
+                   "Host: docker\r\nContent-Type: application/json\r\n"
+                   "Content-Length: 41\r\n\r\n"
+                   '{"Detach":false,"Tty":false}').encode('utf-8')
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.connect(sock_path)
+            sock.sendall(req)
+            
+            output = b''
+            while True:
+                chunk = sock.recv(4096)
+                if not chunk: break
+                output += chunk
+            sock.close()
+            
+            # 获取退出码
+            req = f"GET /exec/{exec_id}/json HTTP/1.1\r\nHost: docker\r\n\r\n".encode('utf-8')
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.connect(sock_path)
+            sock.sendall(req)
+            resp = b''
+            while True:
+                chunk = sock.recv(4096)
+                if not chunk: break
+                resp += chunk
+            sock.close()
+            
+            body = resp.split(b'\r\n\r\n', 1)[1] if b'\r\n\r\n' in resp else resp
+            exit_info = json.loads(body.decode('utf-8'))
+            exit_code = exit_info.get('ExitCode', 1)
+
+            out_str = output.decode('utf-8', errors='ignore').split('\r\n\r\n', 1)[-1]
+            return exit_code, out_str
+        except Exception as e:
+            return 1, f"Docker API 调用失败: {str(e)}"
     
     def _load_template(self) -> Template:
         """加载 Nginx 配置模板"""
@@ -133,8 +204,18 @@ class NginxManager:
         """测试 Nginx 配置语法"""
         try:
             if self.is_docker:
-                # Docker 环境：通过 docker exec 执行
-                result = self._run_docker_command([self.nginx_bin, '-t'])
+                # Docker 环境：优先使用 docker CLI，否则使用 Docker socket API
+                if shutil.which('docker') is not None:
+                    result = self._run_docker_command([self.nginx_bin, '-t'])
+                    output = result.stderr or result.stdout
+                    if result.returncode == 0:
+                        return True, output
+                    else:
+                        return False, output
+                else:
+                    # 回退到 Docker API
+                    exit_code, output = self._docker_api_exec_cmd([self.nginx_bin, '-t'])
+                    return (exit_code == 0), output
             else:
                 # 本地环境：直接执行
                 result = subprocess.run(
@@ -174,8 +255,13 @@ class NginxManager:
             
             # 重载 Nginx
             if self.is_docker:
-                # Docker 环境：通过 docker exec 执行
-                result = self._run_docker_command([self.nginx_bin, '-s', 'reload'])
+                # Docker 环境：优先使用 docker CLI，否则使用 Docker socket API
+                if shutil.which('docker') is not None:
+                    result = self._run_docker_command([self.nginx_bin, '-s', 'reload'])
+                    rc = result.returncode
+                    err = result.stderr or result.stdout
+                else:
+                    rc, err = self._docker_api_exec_cmd([self.nginx_bin, '-s', 'reload'])
             else:
                 # 本地环境：直接执行
                 result = subprocess.run(
@@ -184,8 +270,10 @@ class NginxManager:
                     text=True,
                     timeout=10
                 )
+                rc = result.returncode
+                err = result.stderr or result.stdout
             
-            if result.returncode == 0:
+            if rc == 0:
                 return NginxReloadResponse(
                     success=True,
                     message="Nginx 重载成功",
@@ -195,7 +283,7 @@ class NginxManager:
                 return NginxReloadResponse(
                     success=False,
                     message="Nginx 重载失败",
-                    error=result.stderr or result.stdout
+                    error=err
                 )
                 
         except subprocess.TimeoutExpired:

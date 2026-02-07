@@ -45,7 +45,7 @@ RUN apt-get update && \
     docker.io \
     && rm -rf /var/lib/apt/lists/*
 
-# 创建非 root 用户并加入 docker 组
+# 创建非 root 用户并加入 docker 组（使用主机 docker group GID 103）
 RUN useradd -m -u 1000 -s /bin/bash appuser && \
     mkdir -p /app/config /app/static /app/nginx && \
     chown -R appuser:appuser /app && \

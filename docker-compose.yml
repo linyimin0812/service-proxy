@@ -12,7 +12,8 @@ services:
       - NGINX_CONTAINER_NAME=nginx-proxy-manager-nginx
     volumes:
       - config_data:/app/config
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./nginx/proxy_rules.conf:/app/nginx/proxy_rules.conf:rw
     networks:
       - proxy-network
     healthcheck:

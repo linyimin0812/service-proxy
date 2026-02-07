@@ -45,9 +45,3 @@ Thumbs.db
 # uv
 .python-version
 uv.lock
-
-# Docker
-.dockerignore
-Dockerfile
-docker-compose.yml
-docker-compose.*.yml

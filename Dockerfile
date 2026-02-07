@@ -1,6 +1,6 @@
-# 多阶段构建 - 构建阶段
-FROM python:3.11-slim as builder
 
+# 多阶段构建 - 构建阶段
+FROM python:3.11-slim AS builder
 # 配置 APT 镜像源（阿里云）
 RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources && \
     sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources
@@ -25,9 +25,9 @@ RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -e .
 
+
 # 生产阶段
 FROM python:3.11-slim
-
 # 配置 APT 镜像源（阿里云）
 RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources && \
     sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources
@@ -45,10 +45,12 @@ RUN apt-get update && \
     docker.io \
     && rm -rf /var/lib/apt/lists/*
 
-# 创建非 root 用户
+# 创建非 root 用户并加入 docker 组
 RUN useradd -m -u 1000 -s /bin/bash appuser && \
     mkdir -p /app/config /app/static /app/nginx && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app && \
+    groupadd -f -g 103 docker && \
+    usermod -aG docker appuser
 
 # 设置工作目录
 WORKDIR /app

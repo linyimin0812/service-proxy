@@ -1,6 +1,10 @@
 # 多阶段构建 - 构建阶段
 FROM python:3.11-slim as builder
 
+# 配置 APT 镜像源（阿里云）
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources && \
+    sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources
+
 # 设置工作目录
 WORKDIR /app
 
@@ -13,12 +17,20 @@ RUN apt-get update && \
 # 复制依赖文件
 COPY pyproject.toml ./
 
+# 配置 pip 镜像源（阿里云）
+RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
+    pip config set install.trusted-host mirrors.aliyun.com
+
 # 安装 Python 依赖
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -e .
 
 # 生产阶段
 FROM python:3.11-slim
+
+# 配置 APT 镜像源（阿里云）
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources && \
+    sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources
 
 # 设置环境变量
 ENV PYTHONUNBUFFERED=1 \

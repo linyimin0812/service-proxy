@@ -38,6 +38,9 @@ ENV PYTHONUNBUFFERED=1 \
     CONFIG_PATH=/app/config \
     NGINX_CONTAINER_NAME=nginx
 
+# 预先创建 docker 组（使用主机 docker group GID 103），然后安装 docker.io
+RUN groupadd -g 103 docker || true
+
 # 安装运行时依赖
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -45,11 +48,10 @@ RUN apt-get update && \
     docker.io \
     && rm -rf /var/lib/apt/lists/*
 
-# 创建非 root 用户并加入 docker 组（使用主机 docker group GID 103）
+# 创建非 root 用户并加入 docker 组
 RUN useradd -m -u 1000 -s /bin/bash appuser && \
     mkdir -p /app/config /app/static /app/nginx && \
     chown -R appuser:appuser /app && \
-    groupadd -f -g 103 docker && \
     usermod -aG docker appuser
 
 # 设置工作目录

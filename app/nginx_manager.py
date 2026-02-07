@@ -5,6 +5,7 @@ Nginx 配置管理模块
 """
 import os
 import subprocess
+import shutil
 from pathlib import Path
 from typing import List, Optional
 from jinja2 import Template
@@ -85,7 +86,23 @@ class NginxManager:
         """写入 Nginx 配置文件"""
         try:
             if self.is_docker:
-                # Docker 环境：通过 docker exec 写入文件
+                # Docker 环境：优先通过 docker exec 写入文件
+                # 如果容器内没有 docker CLI（例如镜像未安装 docker 客户端），
+                # 尝试回退到写入主机挂载的配置文件（如果存在）
+                if shutil.which('docker') is None:
+                    # 常见的主机挂载路径候选（容器内相对路径）
+                    candidate_paths = [Path('/app/nginx/proxy_rules.conf'), Path('nginx/proxy_rules.conf')]
+                    for p in candidate_paths:
+                        try:
+                            if p.exists():
+                                p.write_text(config_content, encoding='utf-8')
+                                return True
+                        except Exception:
+                            continue
+
+                    raise FileNotFoundError("docker CLI 未找到，且未检测到可写的主机挂载配置文件")
+
+                # 使用 docker exec 写入到 nginx 容器
                 write_cmd = ['sh', '-c', f'cat > {self.output_path}']
                 result = subprocess.run(
                     ['docker', 'exec', '-i', self.nginx_container] + write_cmd,
@@ -94,10 +111,10 @@ class NginxManager:
                     text=True,
                     timeout=10
                 )
-                
+
                 if result.returncode != 0:
                     raise Exception(f"Docker 写入失败: {result.stderr}")
-                
+
                 return True
             else:
                 # 本地环境：直接写入文件

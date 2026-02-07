@@ -409,11 +409,6 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="healthCheckPath">健康检查路径</label>
-                    <input type="text" id="healthCheckPath" placeholder="/health">
-                </div>
-
-                <div class="form-group">
                     <label for="description">描述</label>
                     <textarea id="description" rows="3" placeholder="规则描述"></textarea>
                 </div>
@@ -560,7 +555,6 @@
                 document.getElementById('path').value = rule.path;
                 document.getElementById('targetPort').value = rule.target_port;
                 document.getElementById('targetHost').value = rule.target_host;
-                document.getElementById('healthCheckPath').value = rule.health_check_path || '';
                 document.getElementById('description').value = rule.description || '';
                 document.getElementById('enabled').checked = rule.enabled;
                 document.getElementById('ruleModal').style.display = 'block';
@@ -577,7 +571,6 @@
                 path: document.getElementById('path').value,
                 target_port: parseInt(document.getElementById('targetPort').value),
                 target_host: document.getElementById('targetHost').value,
-                health_check_path: document.getElementById('healthCheckPath').value || null,
                 description: document.getElementById('description').value,
                 enabled: document.getElementById('enabled').checked
             };

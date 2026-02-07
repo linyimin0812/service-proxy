@@ -11,6 +11,9 @@ upstream backend_{{ rule.id }} {
 }
 
 location {{ rule.path }} {
+    # 路径重写：去除路径前缀
+    rewrite ^{{ rule.path }}(/.*)?$ $1 break;
+    
     proxy_pass http://backend_{{ rule.id }};
     
     # 代理头设置

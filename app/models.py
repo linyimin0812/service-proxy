@@ -13,7 +13,6 @@ class ProxyRule(BaseModel):
     target_port: int = Field(..., ge=1, le=65535, description="目标端口")
     target_host: str = Field(default="localhost", description="目标主机")
     enabled: bool = Field(default=True, description="是否启用")
-    health_check_path: Optional[str] = Field(default=None, description="健康检查路径")
     description: Optional[str] = Field(default="", description="规则描述")
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -27,13 +26,6 @@ class ProxyRule(BaseModel):
             raise ValueError('路径不能包含空格')
         return v
 
-    @validator('health_check_path')
-    def validate_health_check_path(cls, v):
-        """验证健康检查路径格式"""
-        if v is not None and not v.startswith('/'):
-            raise ValueError('健康检查路径必须以 / 开头')
-        return v
-
     class Config:
         json_schema_extra = {
             "example": {
@@ -41,7 +33,6 @@ class ProxyRule(BaseModel):
                 "target_port": 8001,
                 "target_host": "localhost",
                 "enabled": True,
-                "health_check_path": "/health",
                 "description": "API 服务"
             }
         }
@@ -53,7 +44,6 @@ class ProxyRuleCreate(BaseModel):
     target_port: int = Field(..., ge=1, le=65535, description="目标端口")
     target_host: str = Field(default="localhost", description="目标主机")
     enabled: bool = Field(default=True, description="是否启用")
-    health_check_path: Optional[str] = Field(default=None, description="健康检查路径")
     description: Optional[str] = Field(default="", description="规则描述")
 
     @validator('path')
@@ -71,7 +61,6 @@ class ProxyRuleUpdate(BaseModel):
     target_port: Optional[int] = Field(default=None, ge=1, le=65535)
     target_host: Optional[str] = None
     enabled: Optional[bool] = None
-    health_check_path: Optional[str] = None
     description: Optional[str] = None
 
     @validator('path')

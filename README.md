@@ -244,7 +244,6 @@ rules:
     target_port: 8001
     target_host: localhost
     enabled: true
-    health_check_path: /health
     description: "API 服务"
     created_at: "2026-02-07T11:45:00"
     updated_at: "2026-02-07T11:45:00"

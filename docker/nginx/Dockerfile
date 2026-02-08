@@ -1,6 +1,6 @@
 FROM nginx:alpine
 
-RUN apk add --no-cache inotify-tools bash
+RUN apk add --no-cache inotify-tools bash netcat-openbsd
 
 COPY docker-entrypoint-watch.sh /docker-entrypoint-watch.sh
 RUN chmod +x /docker-entrypoint-watch.sh

@@ -32,7 +32,8 @@ services:
   # Nginx 反向代理服务
   nginx:
     build:
-      context: ./docker/nginx
+      context: ./docker
+      dockerfile: nginx/Dockerfile
     image: nginx-proxy-custom:latest
     container_name: nginx-proxy-manager-nginx
     restart: unless-stopped

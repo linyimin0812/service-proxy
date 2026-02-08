@@ -16,8 +16,7 @@ services:
       - ./nginx/proxy_rules.conf:/app/nginx/proxy_rules.conf:rw
     networks:
       - proxy-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "8000"]
       interval: 30s
@@ -47,6 +46,8 @@ services:
         condition: service_healthy
     networks:
       - proxy-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "80"]
       interval: 30s

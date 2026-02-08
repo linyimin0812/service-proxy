@@ -11,7 +11,7 @@ services:
       - CONFIG_PATH=/app/config
       - NGINX_CONTAINER_NAME=nginx-proxy-manager-nginx
     volumes:
-      - config_data:/app/config
+      - ./config:/app/config:rw
       - /var/run/docker.sock:/var/run/docker.sock
       - ./nginx/proxy_rules.conf:/app/nginx/proxy_rules.conf:rw
     networks:

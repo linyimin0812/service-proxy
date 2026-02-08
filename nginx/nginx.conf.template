@@ -10,7 +10,8 @@ location {{ rule.path }} {
     rewrite ^{{ rule.path }}(/.*)?$ $1 break;
 
     # 直接代理到目标主机:端口（避免在 server {} 中声明 upstream）
-    proxy_pass http://{{ rule.target_host }}:{{ rule.target_port }};
+    # 如果配置时未填写 target_host，则默认使用宿主机 host.docker.internal
+    proxy_pass http://{{ rule.target_host | default('host.docker.internal') }}:{{ rule.target_port }};
 
     # 代理头设置
     proxy_set_header Host $host;

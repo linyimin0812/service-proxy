@@ -6,3 +6,4 @@ COPY docker-entrypoint-watch.sh /docker-entrypoint-watch.sh
 RUN chmod +x /docker-entrypoint-watch.sh
 
 ENTRYPOINT ["/docker-entrypoint-watch.sh"]
+CMD ["nginx", "-g", "daemon off;"]

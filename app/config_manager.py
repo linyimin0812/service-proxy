@@ -14,7 +14,15 @@ from app.models import ProxyRule
 class ConfigManager:
     """配置文件管理器"""
     
-    def __init__(self, config_path: str = "config/proxy_config.yaml"):
+    def __init__(self, config_path: str = None):
+        # 优先使用传入的路径，其次使用环境变量，最后使用默认值
+        if config_path is None:
+            config_path = os.getenv('CONFIG_PATH', 'config/proxy_config.yaml')
+        
+        # 如果是目录路径，自动追加文件名
+        if config_path.endswith('/') or (os.path.isdir(config_path) if os.path.exists(config_path) else False):
+            config_path = os.path.join(config_path, 'proxy_config.yaml')
+        
         self.config_path = Path(config_path)
         self.backup_dir = self.config_path.parent / "backups"
         self._ensure_config_exists()

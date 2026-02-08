@@ -10,8 +10,8 @@ handle_signal() {
 
 trap handle_signal TERM INT
 
-# Start original entrypoint - it will start nginx and stay running
-/docker-entrypoint.sh &
+# Start original entrypoint - pass through CMD args so nginx starts correctly
+/docker-entrypoint.sh "$@" &
 MAIN_PID=$!
 
 # Wait for nginx to be ready

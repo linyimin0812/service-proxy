@@ -22,22 +22,36 @@ fi
 
 # 等待 Nginx 容器就绪（如果需要）
 echo "[3/4] 检查 Nginx 容器..."
+# 可通过环境变量调整等待时长（秒）
+NGINX_WAIT_SECONDS=${NGINX_WAIT_SECONDS:-60}
 if [ -n "$NGINX_CONTAINER_NAME" ]; then
-    echo "等待 Nginx 容器 $NGINX_CONTAINER_NAME 就绪..."
-    max_attempts=30
-    attempt=0
-    
-    while [ $attempt -lt $max_attempts ]; do
+    echo "等待 Nginx 容器 $NGINX_CONTAINER_NAME 就绪 (最多 ${NGINX_WAIT_SECONDS}s)..."
+    elapsed=0
+    interval=2
+
+    while [ $elapsed -lt $NGINX_WAIT_SECONDS ]; do
         if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${NGINX_CONTAINER_NAME}$"; then
-            echo "Nginx 容器已就绪"
-            break
+            # 检查 health 状态（如果存在）
+            health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$NGINX_CONTAINER_NAME" 2>/dev/null || true)
+            if [ "$health" = "healthy" ]; then
+                echo "Nginx 容器健康 (status: healthy)"
+                break
+            elif [ -z "$health" ]; then
+                # 没有 health 配置，容器运行即可认为就绪
+                echo "Nginx 容器已运行 (无 health 信息)，认为就绪"
+                break
+            else
+                echo "Nginx 容器当前状态: $health；继续等待..."
+            fi
+        else
+            echo "Nginx 容器未运行；继续等待..."
         fi
-        attempt=$((attempt + 1))
-        echo "等待中... ($attempt/$max_attempts)"
-        sleep 2
+
+        sleep $interval
+        elapsed=$((elapsed + interval))
     done
-    
-    if [ $attempt -eq $max_attempts ]; then
+
+    if [ $elapsed -ge $NGINX_WAIT_SECONDS ]; then
         echo "警告: Nginx 容器未在预期时间内就绪，继续启动..."
     fi
 else

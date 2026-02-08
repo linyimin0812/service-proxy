@@ -31,7 +31,9 @@ services:
 
   # Nginx 反向代理服务
   nginx:
-    image: nginx:alpine
+    build:
+      context: ./docker/nginx
+    image: nginx-proxy-custom:latest
     container_name: nginx-proxy-manager-nginx
     restart: unless-stopped
     ports:

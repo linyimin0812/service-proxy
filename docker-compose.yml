@@ -16,7 +16,8 @@ services:
       - ./nginx:/app/nginx:rw
     networks:
       - proxy-network
-    
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "8000"]
       interval: 30s
@@ -72,5 +73,6 @@ volumes:
     name: nginx-proxy-config
   nginx_logs:
     name: nginx-proxy-logs
+
 
 

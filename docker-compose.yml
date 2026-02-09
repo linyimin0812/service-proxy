@@ -13,7 +13,7 @@ services:
     volumes:
       - ./config:/app/config:rw
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./nginx/proxy_rules.conf:/app/nginx/proxy_rules.conf:rw
+      - ./nginx:/app/nginx:rw
     networks:
       - proxy-network
     
@@ -42,7 +42,6 @@ services:
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/proxy_rules.conf:/etc/nginx/conf.d/proxy_rules.conf:rw
-      - nginx_conf:/etc/nginx/conf.d
       - nginx_logs:/var/log/nginx
     depends_on:
       fastapi:
@@ -71,8 +70,7 @@ networks:
 volumes:
   config_data:
     name: nginx-proxy-config
-  nginx_conf:
-    name: nginx-proxy-conf
   nginx_logs:
     name: nginx-proxy-logs
+
 

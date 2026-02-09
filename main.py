@@ -1,6 +1,8 @@
 """
 NGINX 代理配置管理系统 - FastAPI 主应用
 """
+import logging
+import sys
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -8,18 +10,29 @@ from contextlib import asynccontextmanager
 from app.api.routes import router
 from app.health_check import health_checker
 
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # 启动时执行
-    print("启动健康检查服务...")
+    logger.info("启动健康检查服务...")
     health_checker.start()
     
     yield
     
     # 关闭时执行
-    print("停止健康检查服务...")
+    logger.info("停止健康检查服务...")
     health_checker.stop()
 
 
@@ -59,3 +72,4 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
+

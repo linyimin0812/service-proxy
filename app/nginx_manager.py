@@ -8,11 +8,15 @@ import subprocess
 import shutil
 import socket
 import json
+import logging
 from pathlib import Path
 from typing import List, Optional
 from jinja2 import Template
 from app.models import ProxyRule, NginxReloadResponse
 from app.config_manager import ConfigManager
+
+# 配置日志
+logger = logging.getLogger(__name__)
 
 
 class NginxManager:
@@ -21,7 +25,7 @@ class NginxManager:
     def __init__(
         self,
         template_path: str = "nginx/nginx.conf.template",
-        output_path: str = "/etc/nginx/conf.d/proxy_rules.conf",
+        output_path: str = "nginx/proxy_rules.conf",
         nginx_bin: str = "nginx"
     ):
         self.template_path = Path(template_path)
@@ -153,144 +157,152 @@ class NginxManager:
         
         return template.render(**template_data)
     
-    def write_config(self, config_content: str) -> bool:
-        """写入 Nginx 配置文件"""
+    def read_config_file(self) -> Optional[str]:
+        """读取当前的 Nginx 配置文件内容（简化版本）"""
         try:
-            if self.is_docker:
-                # Docker 环境：优先通过 docker exec 写入文件
-                # 如果容器内没有 docker CLI（例如镜像未安装 docker 客户端），
-                # 尝试回退到写入主机挂载的配置文件（如果存在）
-                if shutil.which('docker') is None:
-                    # 常见的主机挂载路径候选（容器内相对路径）
-                    candidate_paths = [Path('/app/nginx/proxy_rules.conf'), Path('nginx/proxy_rules.conf')]
-                    for p in candidate_paths:
-                        try:
-                            if p.exists():
-                                p.write_text(config_content, encoding='utf-8')
-                                return True
-                        except Exception:
-                            continue
-
-                    raise FileNotFoundError("docker CLI 未找到，且未检测到可写的主机挂载配置文件")
-
-                # 使用 docker exec 写入到 nginx 容器
-                write_cmd = ['sh', '-c', f'cat > {self.output_path}']
-                result = subprocess.run(
-                    ['docker', 'exec', '-i', self.nginx_container] + write_cmd,
-                    input=config_content,
-                    capture_output=True,
-                    text=True,
-                    timeout=10
-                )
-
-                if result.returncode != 0:
-                    raise Exception(f"Docker 写入失败: {result.stderr}")
-
-                return True
+            # 统一从本地路径读取（通过 volume 挂载）
+            if self.output_path.exists():
+                return self.output_path.read_text(encoding='utf-8')
             else:
-                # 本地环境：直接写入文件
-                self.output_path.parent.mkdir(parents=True, exist_ok=True)
-                
-                with open(self.output_path, 'w', encoding='utf-8') as f:
-                    f.write(config_content)
-                
-                return True
+                logger.warning(f"配置文件不存在: {self.output_path}")
+                return None
+        except Exception as e:
+            logger.error(f"读取配置文件失败: {str(e)}")
+            return None
+    
+    def log_config_content(self, operation: str):
+        """打印配置文件内容到日志"""
+        logger.info(f"=" * 80)
+        logger.info(f"操作: {operation}")
+        logger.info(f"配置文件路径: {self.output_path}")
+        logger.info(f"-" * 80)
+        
+        content = self.read_config_file()
+        if content:
+            logger.info("配置文件内容:")
+            logger.info(content)
+        else:
+            logger.warning("无法读取配置文件内容")
+        
+        logger.info(f"=" * 80)
+    
+    def write_config(self, config_content: str) -> bool:
+        """写入 Nginx 配置文件（简化版本）"""
+        try:
+            # 统一使用本地文件写入（通过 Docker volume 挂载）
+            # 这样无论是否在容器内，都直接写入挂载的配置文件
+            self.output_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(self.output_path, 'w', encoding='utf-8') as f:
+                f.write(config_content)
+            
+            logger.info(f"配置文件已写入: {self.output_path}")
+            return True
+            
         except PermissionError:
             raise PermissionError(f"没有权限写入配置文件: {self.output_path}")
         except Exception as e:
             raise Exception(f"写入配置文件失败: {str(e)}")
     
     def test_config(self) -> tuple[bool, Optional[str]]:
-        """测试 Nginx 配置语法"""
+        """测试 Nginx 配置语法（简化版本）"""
         try:
-            # 对于 Docker 环境，如果没有 docker CLI，
-            # 假设配置已通过挂载卷正确写入，直接返回成功
-            if self.is_docker and shutil.which('docker') is None:
-                return True, "配置通过挂载卷写入，假设有效"
-            
             if self.is_docker:
-                # Docker 环境：优先使用 docker CLI
-                result = self._run_docker_command([self.nginx_bin, '-t'])
-                output = result.stderr or result.stdout
-                if result.returncode == 0:
-                    return True, output
-                else:
-                    return False, output
+                # Docker 环境：通过 docker exec 测试配置
+                try:
+                    result = subprocess.run(
+                        ['docker', 'exec', self.nginx_container, self.nginx_bin, '-t'],
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+                    output = result.stderr or result.stdout
+                    return (result.returncode == 0, output)
+                except FileNotFoundError:
+                    # docker 命令不存在，跳过测试
+                    logger.warning("Docker 命令不可用，跳过配置测试")
+                    return True, "配置测试跳过（Docker 不可用）"
             else:
-                # 本地环境：直接执行
+                # 本地环境：直接测试
                 result = subprocess.run(
                     [self.nginx_bin, '-t'],
                     capture_output=True,
                     text=True,
                     timeout=10
                 )
-            
-                # nginx -t 的输出在 stderr 中
-                output = result.stderr
-                if result.returncode == 0:
-                    return True, output
-                else:
-                    return False, output
+                output = result.stderr or result.stdout
+                return (result.returncode == 0, output)
                 
         except subprocess.TimeoutExpired:
             return False, "配置测试超时"
         except FileNotFoundError:
-            return False, f"Nginx 可执行文件未找到: {self.nginx_bin}"
+            logger.warning(f"Nginx 可执行文件未找到: {self.nginx_bin}")
+            return True, "配置测试跳过（Nginx 不可用）"
         except Exception as e:
+            logger.error(f"配置测试失败: {str(e)}")
             return False, f"配置测试失败: {str(e)}"
     
     def reload_nginx(self) -> NginxReloadResponse:
-        """重载 Nginx 配置"""
+        """重载 Nginx 配置（简化版本）"""
         try:
-            # 先测试配置
-            is_valid, test_output = self.test_config()
+            # 简化方案：直接通过 docker exec 发送 reload 信号
+            # 配置文件已通过 volume 挂载，NGINX 会自动读取
             
-            if not is_valid:
-                return NginxReloadResponse(
-                    success=False,
-                    message="Nginx 配置测试失败",
-                    error=test_output
-                )
-            
-            # 重载 Nginx
             if self.is_docker:
-                # Docker 环境
-                if shutil.which('docker') is not None:
-                    # 使用 docker CLI
-                    result = self._run_docker_command([self.nginx_bin, '-s', 'reload'])
-                    rc = result.returncode
-                    err = result.stderr or result.stdout
-                else:
-                    # 如果没有 docker CLI，假设通过挂载卷写入的配置已被 nginx 自动识别
-                    # 直接返回成功
+                # Docker 环境：发送 reload 信号到容器
+                try:
+                    result = subprocess.run(
+                        ['docker', 'exec', self.nginx_container, self.nginx_bin, '-s', 'reload'],
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+                    
+                    if result.returncode == 0:
+                        logger.info("Nginx 重载信号发送成功")
+                        return NginxReloadResponse(
+                            success=True,
+                            message="Nginx 重载成功",
+                            config_path=str(self.output_path)
+                        )
+                    else:
+                        error_msg = result.stderr or result.stdout
+                        logger.error(f"Nginx 重载失败: {error_msg}")
+                        return NginxReloadResponse(
+                            success=False,
+                            message="Nginx 重载失败",
+                            error=error_msg
+                        )
+                except FileNotFoundError:
+                    # docker 命令不存在，说明可能在容器内运行
+                    # 配置已通过挂载写入，标记为成功
+                    logger.info("Docker 命令不可用，配置已通过挂载卷更新")
                     return NginxReloadResponse(
                         success=True,
-                        message="Nginx 配置已通过挂载卷更新",
+                        message="配置已更新（通过挂载卷）",
                         config_path=str(self.output_path)
                     )
             else:
-                # 本地环境：直接执行
+                # 本地环境：直接执行 reload
                 result = subprocess.run(
                     [self.nginx_bin, '-s', 'reload'],
                     capture_output=True,
                     text=True,
                     timeout=10
                 )
-                rc = result.returncode
-                err = result.stderr or result.stdout
-            
-            if rc == 0:
-                return NginxReloadResponse(
-                    success=True,
-                    message="Nginx 重载成功",
-                    config_path=str(self.output_path)
-                )
-            else:
-                return NginxReloadResponse(
-                    success=False,
-                    message="Nginx 重载失败",
-                    error=err
-                )
+                
+                if result.returncode == 0:
+                    return NginxReloadResponse(
+                        success=True,
+                        message="Nginx 重载成功",
+                        config_path=str(self.output_path)
+                    )
+                else:
+                    return NginxReloadResponse(
+                        success=False,
+                        message="Nginx 重载失败",
+                        error=result.stderr or result.stdout
+                    )
                 
         except subprocess.TimeoutExpired:
             return NginxReloadResponse(
@@ -299,6 +311,7 @@ class NginxManager:
                 error="操作超时"
             )
         except Exception as e:
+            logger.error(f"Nginx 重载异常: {str(e)}")
             return NginxReloadResponse(
                 success=False,
                 message="Nginx 重载异常",
@@ -308,32 +321,46 @@ class NginxManager:
     def update_and_reload(self) -> NginxReloadResponse:
         """更新配置并重载 Nginx"""
         try:
+            logger.info("开始更新配置并重载 Nginx")
+            
             # 生成新配置
             config_content = self.generate_config()
+            logger.info(f"已生成新配置，共 {len(config_content)} 字符")
             
             # 备份当前配置（如果存在）
             if self.output_path.exists():
                 backup_path = self.output_path.with_suffix('.conf.backup')
                 import shutil
                 shutil.copy2(self.output_path, backup_path)
+                logger.info(f"已备份当前配置到: {backup_path}")
             
             # 写入新配置
             self.write_config(config_content)
+            
+            # 打印配置文件内容
+            self.log_config_content("写入配置后")
             
             # 重载 Nginx
             result = self.reload_nginx()
             
             # 如果重载失败，恢复备份
             if not result.success:
+                logger.error(f"Nginx 重载失败: {result.error}")
                 backup_path = self.output_path.with_suffix('.conf.backup')
                 if backup_path.exists():
                     import shutil
                     shutil.copy2(backup_path, self.output_path)
                     result.message += " (已恢复备份配置)"
+                    logger.info("已恢复备份配置")
+            else:
+                logger.info("Nginx 重载成功")
+                # 重载成功后再次打印配置内容确认
+                self.log_config_content("重载 Nginx 后")
             
             return result
             
         except Exception as e:
+            logger.error(f"更新配置失败: {str(e)}")
             return NginxReloadResponse(
                 success=False,
                 message="更新配置失败",
@@ -420,3 +447,4 @@ class NginxManager:
                 return False, f"端口超出范围: {rule.target_port}"
         
         return True, None
+

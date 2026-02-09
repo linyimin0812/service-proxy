@@ -1,6 +1,7 @@
 """
 API 路由定义
 """
+import logging
 from typing import List
 from fastapi import APIRouter, HTTPException, status
 from app.models import (
@@ -14,6 +15,9 @@ from app.models import (
 from app.config_manager import ConfigManager
 from app.nginx_manager import NginxManager
 from app.health_check import health_checker
+
+# 配置日志
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/api", tags=["proxy"])
@@ -64,6 +68,15 @@ async def create_rule(rule_data: ProxyRuleCreate):
         rule = ProxyRule(**rule_data.model_dump())
         created_rule = config_manager.add_rule(rule)
         
+        # 自动重载 Nginx 配置
+        logger.info(f"规则创建成功，开始重载 Nginx 配置...")
+        reload_result = nginx_manager.update_and_reload()
+        if not reload_result.success:
+            # 如果重载失败，记录警告但不影响规则创建
+            logger.warning(f"Nginx 重载失败: {reload_result.error}")
+        else:
+            logger.info("Nginx 配置重载成功")
+        
         return created_rule
     except ValueError as e:
         raise HTTPException(
@@ -93,6 +106,15 @@ async def update_rule(rule_id: str, rule_data: ProxyRuleUpdate):
         updates = rule_data.model_dump(exclude_none=True)
         updated_rule = config_manager.update_rule(rule_id, updates)
         
+        # 自动重载 Nginx 配置
+        logger.info(f"规则更新成功，开始重载 Nginx 配置...")
+        reload_result = nginx_manager.update_and_reload()
+        if not reload_result.success:
+            # 如果重载失败，记录警告但不影响规则更新
+            logger.warning(f"Nginx 重载失败: {reload_result.error}")
+        else:
+            logger.info("Nginx 配置重载成功")
+        
         return updated_rule
     except ValueError as e:
         raise HTTPException(
@@ -111,6 +133,16 @@ async def delete_rule(rule_id: str):
     """删除代理规则"""
     try:
         config_manager.delete_rule(rule_id)
+        
+        # 自动重载 Nginx 配置
+        logger.info(f"规则删除成功，开始重载 Nginx 配置...")
+        reload_result = nginx_manager.update_and_reload()
+        if not reload_result.success:
+            # 如果重载失败，记录警告但不影响规则删除
+            logger.warning(f"Nginx 重载失败: {reload_result.error}")
+        else:
+            logger.info("Nginx 配置重载成功")
+        
         return APIResponse(
             success=True,
             message=f"规则 {rule_id} 已删除"
@@ -269,3 +301,4 @@ async def restore_backup(backup_filename: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"恢复备份失败: {str(e)}"
         )
+

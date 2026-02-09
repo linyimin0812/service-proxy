@@ -3,10 +3,10 @@
 # 生成时间: {{ timestamp }}
 
 {% for rule in rules %}
-# 规则: {{ rule.path }} -> {{ rule.target_host }}:{{ rule.target_port }}
+# 规则: {{ rule.path }} -> {{ rule.target_host or 'host.docker.internal' }}:{{ rule.target_port }}
 # 描述: {{ rule.description or '无' }}
 location {{ rule.path }}/ {
-    proxy_pass http://{{ rule.target_host }}:{{ rule.target_port }}/;
+    proxy_pass http://{{ rule.target_host or 'host.docker.internal' }}:{{ rule.target_port }}/;
 
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
@@ -28,5 +28,6 @@ location {{ rule.path }}/ {
 }
 
 {% endfor %}
+
 
 

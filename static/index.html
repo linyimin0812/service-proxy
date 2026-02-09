@@ -403,9 +403,9 @@
                     <input type="number" id="targetPort" min="1" max="65535" placeholder="8001" required>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="targetHostGroup" style="display: none;">
                     <label for="targetHost">目标主机</label>
-                    <input type="text" id="targetHost" value="localhost" placeholder="localhost">
+                    <input type="text" id="targetHost" value="host.docker.internal" placeholder="host.docker.internal">
                 </div>
 
                 <div class="form-group">
@@ -539,7 +539,7 @@
             document.getElementById('ruleForm').reset();
             document.getElementById('ruleId').value = '';
             document.getElementById('enabled').checked = true;
-            document.getElementById('targetHost').value = 'localhost';
+            document.getElementById('targetHost').value = 'host.docker.internal';
             document.getElementById('ruleModal').style.display = 'block';
         }
 
@@ -567,10 +567,11 @@
         async function saveRule(event) {
             event.preventDefault();
             
+            const targetHostValue = document.getElementById('targetHost').value.trim();
             const formData = {
                 path: document.getElementById('path').value,
                 target_port: parseInt(document.getElementById('targetPort').value),
-                target_host: document.getElementById('targetHost').value,
+                target_host: targetHostValue || 'host.docker.internal',
                 description: document.getElementById('description').value,
                 enabled: document.getElementById('enabled').checked
             };
@@ -694,3 +695,4 @@
     </script>
 </body>
 </html>
+

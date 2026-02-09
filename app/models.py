@@ -42,7 +42,7 @@ class ProxyRuleCreate(BaseModel):
     """创建代理规则的请求模型"""
     path: str = Field(..., description="URL路径")
     target_port: int = Field(..., ge=1, le=65535, description="目标端口")
-    target_host: str = Field(default="host.docker.internal", description="目标主机（默认宿主机）")
+    target_host: str = Field(default="host.docker.internal", description="目标主机，默认为宿主机（host.docker.internal），无需手动填写")
     enabled: bool = Field(default=True, description="是否启用")
     description: Optional[str] = Field(default="", description="规则描述")
 
@@ -109,3 +109,4 @@ class APIResponse(BaseModel):
     message: str
     data: Optional[dict] = None
     error: Optional[str] = None
+

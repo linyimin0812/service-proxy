@@ -4,10 +4,10 @@ echo "=========================================="
 echo "NGINX 代理配置管理系统 - 容器启动"
 echo "=========================================="
 
-# 初始化配置目录
+# 初始化配置目录（以 root 身份执行，确保权限正确）
 echo "[1/3] 初始化配置目录..."
-mkdir -p /app/config/backups 2>/dev/null || true
-mkdir -p /app/nginx 2>/dev/null || true
+mkdir -p /app/config/backups
+mkdir -p /app/nginx
 
 # 创建默认配置文件（如果不存在）
 if [ ! -f /app/config/proxy_config.yaml ]; then
@@ -27,26 +27,22 @@ if [ ! -f /app/nginx/proxy_rules.conf ]; then
 # NGINX 代理规则配置
 # 自动生成，请勿手动编辑
 EOF
-    if [ $? -eq 0 ]; then
-        echo "✓ Nginx 配置文件已创建"
-    else
-        echo "⚠ 无法创建配置文件，应用启动后将自动创建"
-    fi
+    echo "✓ Nginx 配置文件已创建"
 else
     echo "✓ Nginx 配置文件已存在"
-    # 验证文件可写
-    if [ -w /app/nginx/proxy_rules.conf ]; then
-        echo "✓ 配置文件可写"
-    else
-        echo "⚠ 配置文件不可写，应用运行时可能出现写入错误"
-        echo "  建议在宿主机执行: chmod 666 nginx/proxy_rules.conf"
-    fi
 fi
 
+# 修复挂载卷的权限，确保 appuser 可读写
+echo "[*] 修复文件权限..."
+chown -R appuser:appuser /app/config
+chown -R appuser:appuser /app/nginx
+echo "✓ 文件权限已修复"
+
 echo "=========================================="
-echo "初始化完成，启动应用..."
+echo "初始化完成，以 appuser 身份启动应用..."
 echo "=========================================="
 
-# 执行传入的命令
-exec "$@"
+# 以 appuser 身份执行传入的命令
+exec gosu appuser "$@"
+
 

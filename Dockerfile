@@ -52,7 +52,8 @@ RUN apt-get update && \
 RUN useradd -m -u 1000 -s /bin/bash appuser && \
     mkdir -p /app/config /app/static /app/nginx && \
     chown -R appuser:appuser /app && \
-    usermod -aG docker appuser
+    usermod -aG docker appuser && \
+    apt-get update && apt-get install -y --no-install-recommends gosu && rm -rf /var/lib/apt/lists/*
 
 # 设置工作目录
 WORKDIR /app
@@ -71,8 +72,7 @@ COPY --chown=appuser:appuser docker/entrypoint.sh /entrypoint.sh
 # 设置脚本执行权限
 RUN chmod +x /entrypoint.sh
 
-# 切换到非 root 用户
-USER appuser
+# 注意：不切换用户，entrypoint.sh 以 root 启动做初始化，然后用 gosu 降权运行应用
 
 # 暴露端口
 EXPOSE 8000
@@ -84,3 +84,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # 启动命令
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python", "main.py"]
+

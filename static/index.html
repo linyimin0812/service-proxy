@@ -30,6 +30,7 @@
             padding: 30px 0;
             margin-bottom: 30px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
         }
 
         header h1 {
@@ -324,12 +325,104 @@
             margin-bottom: 20px;
             opacity: 0.5;
         }
+
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .login-box h2 {
+            color: #2d3748;
+            margin-bottom: 8px;
+            font-size: 1.5em;
+        }
+
+        .login-box p {
+            color: #718096;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+
+        .login-box input[type="password"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .login-box input[type="password"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .login-box .login-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        .login-box .login-btn:hover {
+            opacity: 0.9;
+        }
+
+        .login-box .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .login-error {
+            color: #f56565;
+            font-size: 14px;
+            margin-bottom: 12px;
+            display: none;
+        }
     </style>
 </head>
 <body>
+    <!-- Token 验证登录页 -->
+    <div id="loginOverlay" class="login-overlay">
+        <div class="login-box">
+            <h2>🔐 访问验证</h2>
+            <p>请输入访问 Token 以进入管理系统</p>
+            <div id="loginError" class="login-error">Token 无效，请重试</div>
+            <input type="password" id="tokenInput" placeholder="请输入 Token" onkeydown="if(event.key==='Enter') verifyToken()">
+            <button class="login-btn" id="loginBtn" onclick="verifyToken()">验 证</button>
+        </div>
+    </div>
+
     <header>
         <div class="container">
             <h1>🚀 NGINX 代理配置管理系统</h1>
+            <button onclick="logout()" style="position:absolute;right:20px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;">🔓 退出登录</button>
         </div>
     </header>
 
@@ -432,17 +525,111 @@
         const API_BASE = '/api';
         let currentEditingId = null;
 
-        // 页面加载时初始化
-        document.addEventListener('DOMContentLoaded', () => {
+        function getStoredToken() {
+            return sessionStorage.getItem('access_token') || '';
+        }
+
+        function authHeaders() {
+            return {
+                'Authorization': 'Bearer ' + getStoredToken(),
+                'Content-Type': 'application/json'
+            };
+        }
+
+        function authFetch(url, options = {}) {
+            options.headers = Object.assign({}, authHeaders(), options.headers || {});
+            return fetch(url, options).then(response => {
+                if (response.status === 401) {
+                    sessionStorage.removeItem('access_token');
+                    document.getElementById('loginOverlay').style.display = 'flex';
+                    throw new Error('Token 已失效，请重新验证');
+                }
+                return response;
+            });
+        }
+
+        async function verifyToken() {
+            const tokenInput = document.getElementById('tokenInput');
+            const loginError = document.getElementById('loginError');
+            const loginBtn = document.getElementById('loginBtn');
+            const token = tokenInput.value.trim();
+
+            if (!token) {
+                loginError.textContent = '请输入 Token';
+                loginError.style.display = 'block';
+                return;
+            }
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = '验证中...';
+            loginError.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/auth/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: token })
+                });
+
+                if (response.ok) {
+                    sessionStorage.setItem('access_token', token);
+                    document.getElementById('loginOverlay').style.display = 'none';
+                    initApp();
+                } else {
+                    loginError.textContent = 'Token 无效，请重试';
+                    loginError.style.display = 'block';
+                    tokenInput.value = '';
+                    tokenInput.focus();
+                }
+            } catch (error) {
+                loginError.textContent = '验证失败: ' + error.message;
+                loginError.style.display = 'block';
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = '验 证';
+            }
+        }
+
+        function logout() {
+            sessionStorage.removeItem('access_token');
+            document.getElementById('loginOverlay').style.display = 'flex';
+            document.getElementById('tokenInput').value = '';
+            document.getElementById('loginError').style.display = 'none';
+        }
+
+        function initApp() {
             loadRules();
             loadStatistics();
-            setInterval(loadStatistics, 30000); // 每30秒更新统计信息
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedToken = getStoredToken();
+            if (savedToken) {
+                fetch('/api/auth/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: savedToken })
+                }).then(response => {
+                    if (response.ok) {
+                        document.getElementById('loginOverlay').style.display = 'none';
+                        initApp();
+                    } else {
+                        sessionStorage.removeItem('access_token');
+                    }
+                }).catch(() => {
+                    sessionStorage.removeItem('access_token');
+                });
+            }
+            setInterval(() => {
+                if (getStoredToken()) loadStatistics();
+            }, 30000);
         });
 
         // 加载所有规则
         async function loadRules() {
             try {
-                const response = await fetch(`${API_BASE}/rules`);
+                const response = await authFetch(`${API_BASE}/rules`);
                 const rules = await response.json();
                 
                 const tbody = document.getElementById('rulesTableBody');
@@ -489,7 +676,7 @@
         // 加载健康状态
         async function loadHealthStatus() {
             try {
-                const response = await fetch(`${API_BASE}/health`);
+                const response = await authFetch(`${API_BASE}/health`);
                 const healthData = await response.json();
                 
                 Object.entries(healthData).forEach(([ruleId, health]) => {
@@ -515,8 +702,8 @@
         async function loadStatistics() {
             try {
                 const [rulesResponse, statsResponse] = await Promise.all([
-                    fetch(`${API_BASE}/rules`),
-                    fetch(`${API_BASE}/health/statistics`)
+                    authFetch(`${API_BASE}/rules`),
+                    authFetch(`${API_BASE}/health/statistics`)
                 ]);
                 
                 const rules = await rulesResponse.json();
@@ -546,7 +733,7 @@
         // 编辑规则
         async function editRule(ruleId) {
             try {
-                const response = await fetch(`${API_BASE}/rules/${ruleId}`);
+                const response = await authFetch(`${API_BASE}/rules/${ruleId}`);
                 const rule = await response.json();
                 
                 currentEditingId = ruleId;
@@ -579,15 +766,13 @@
             try {
                 let response;
                 if (currentEditingId) {
-                    response = await fetch(`${API_BASE}/rules/${currentEditingId}`, {
+                    response = await authFetch(`${API_BASE}/rules/${currentEditingId}`, {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(formData)
                     });
                 } else {
-                    response = await fetch(`${API_BASE}/rules`, {
+                    response = await authFetch(`${API_BASE}/rules`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(formData)
                     });
                 }
@@ -613,7 +798,7 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE}/rules/${ruleId}`, {
+                const response = await authFetch(`${API_BASE}/rules/${ruleId}`, {
                     method: 'DELETE'
                 });
 
@@ -636,7 +821,7 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE}/reload`, {
+                const response = await authFetch(`${API_BASE}/reload`, {
                     method: 'POST'
                 });
 
@@ -656,7 +841,7 @@
         async function triggerHealthCheck() {
             try {
                 showNotification('正在执行健康检查...', 'success');
-                await fetch(`${API_BASE}/health/check`, { method: 'POST' });
+                await authFetch(`${API_BASE}/health/check`, { method: 'POST' });
                 
                 setTimeout(() => {
                     loadHealthStatus();
@@ -695,4 +880,5 @@
     </script>
 </body>
 </html>
+
 

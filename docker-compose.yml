@@ -10,6 +10,7 @@ services:
       - PYTHONUNBUFFERED=1
       - CONFIG_PATH=/app/config
       - NGINX_CONTAINER_NAME=nginx-proxy-manager-nginx
+      - ACCESS_TOKEN=changeme
     volumes:
       - ./config:/app/config:rw
       - /var/run/docker.sock:/var/run/docker.sock
@@ -73,6 +74,7 @@ volumes:
     name: nginx-proxy-config
   nginx_logs:
     name: nginx-proxy-logs
+
 
 
 

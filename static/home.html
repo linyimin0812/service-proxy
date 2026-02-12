@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的 Notebook</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            color: #2d3748;
+            background: #f7f8fc;
+            line-height: 1.8;
+        }
+
+        /* 导航栏 */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #e2e8f0;
+            z-index: 100;
+            padding: 0 20px;
+        }
+
+        .nav-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 60px;
+        }
+
+        .nav-logo {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #2d3748;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-logo span {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 28px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #718096;
+            font-size: 15px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: #667eea;
+        }
+
+        /* Hero 区域 */
+        .hero {
+            padding: 140px 20px 80px;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 30px 30px;
+            animation: drift 20s linear infinite;
+        }
+
+        @keyframes drift {
+            from { transform: translate(0, 0); }
+            to { transform: translate(30px, 30px); }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: 3em;
+            font-weight: 800;
+            margin-bottom: 16px;
+            letter-spacing: -1px;
+        }
+
+        .hero .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+
+        .hero .cta-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-hero {
+            padding: 12px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .btn-hero-primary {
+            background: white;
+            color: #667eea;
+        }
+
+        .btn-hero-primary:hover {
+            background: #f0f0ff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        .btn-hero-outline {
+            background: transparent;
+            color: white;
+            border: 2px solid rgba(255,255,255,0.6);
+        }
+
+        .btn-hero-outline:hover {
+            border-color: white;
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-2px);
+        }
+
+        /* 内容区域 */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* 关于区域 */
+        .about-section {
+            padding: 80px 20px;
+            background: white;
+        }
+
+        .section-title {
+            font-size: 2em;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 12px;
+            color: #2d3748;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: #718096;
+            font-size: 1.1em;
+            margin-bottom: 48px;
+        }
+
+        .about-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .about-card {
+            background: #f7f8fc;
+            border-radius: 12px;
+            padding: 32px;
+            transition: all 0.3s;
+            border: 1px solid #e2e8f0;
+        }
+
+        .about-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            border-color: #667eea;
+        }
+
+        .about-card .card-icon {
+            font-size: 2.5em;
+            margin-bottom: 16px;
+        }
+
+        .about-card h3 {
+            font-size: 1.3em;
+            margin-bottom: 12px;
+            color: #2d3748;
+        }
+
+        .about-card p {
+            color: #718096;
+            line-height: 1.8;
+        }
+
+        /* 最新文章区域 */
+        .posts-section {
+            padding: 80px 20px;
+        }
+
+        .post-list {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .post-card {
+            background: white;
+            border-radius: 12px;
+            padding: 28px 32px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .post-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            border-color: #667eea;
+        }
+
+        .post-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            color: #a0aec0;
+        }
+
+        .post-tag {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .post-card h3 {
+            font-size: 1.25em;
+            margin-bottom: 8px;
+            color: #2d3748;
+        }
+
+        .post-card p {
+            color: #718096;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        /* 技术栈区域 */
+        .tech-section {
+            padding: 80px 20px;
+            background: white;
+        }
+
+        .tech-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: center;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .tech-badge {
+            background: #f7f8fc;
+            border: 1px solid #e2e8f0;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #4a5568;
+            transition: all 0.3s;
+        }
+
+        .tech-badge:hover {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-color: transparent;
+            transform: scale(1.05);
+        }
+
+        /* 页脚 */
+        footer {
+            background: #2d3748;
+            color: #a0aec0;
+            padding: 48px 20px;
+            text-align: center;
+        }
+
+        .footer-content {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: #a0aec0;
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: #667eea;
+        }
+
+        .footer-copyright {
+            font-size: 13px;
+            opacity: 0.7;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2em;
+            }
+
+            .hero .subtitle {
+                font-size: 1em;
+            }
+
+            .nav-links {
+                gap: 16px;
+            }
+
+            .about-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .section-title {
+                font-size: 1.6em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav>
+        <div class="nav-inner">
+            <a href="/" class="nav-logo">📓 <span>我的 Notebook</span></a>
+            <ul class="nav-links">
+                <li><a href="#apps">入口</a></li>
+                <li><a href="#about">关于</a></li>
+                <li><a href="#posts">文章</a></li>
+                <li><a href="#tech">技术栈</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero 区域 -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>📓 我的 Notebook</h1>
+            <p class="subtitle">记录技术探索与思考，分享编程路上的点滴收获。<br>这里是我的数字花园，欢迎来逛逛 🌱</p>
+            <div class="cta-buttons">
+                <a href="#posts" class="btn-hero btn-hero-primary">📖 开始阅读</a>
+                <a href="#about" class="btn-hero btn-hero-outline">👋 了解更多</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 快捷入口区域 -->
+    <section class="about-section" id="apps">
+        <div class="container">
+            <h2 class="section-title">快捷入口</h2>
+            <p class="section-subtitle">常用工具与服务，一键直达</p>
+            <div class="about-grid">
+
+                <a class="about-card" href="/admin" style="text-decoration:none;color:inherit;">
+                    <div class="card-icon">⚙️</div>
+                    <h3>代理管理后台</h3>
+                    <p>Nginx 反向代理配置管理系统，可视化管理代理规则、健康检查、一键重载配置。</p>
+                </a>
+                <a class="about-card" href="https://github.com" target="_blank" style="text-decoration:none;color:inherit;">
+                    <div class="card-icon">🐙</div>
+                    <h3>GitHub</h3>
+                    <p>我的开源项目和代码仓库，欢迎 Star 和 Fork，一起交流学习。</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 关于区域 -->
+    <section class="about-section" id="about" style="background:#f7f8fc;">
+        <div class="container">
+            <h2 class="section-title">关于这个博客</h2>
+            <p class="section-subtitle">一个程序员的自留地，记录成长路上的技术笔记与生活感悟</p>
+            <div class="about-grid">
+                <div class="about-card">
+                    <div class="card-icon">💡</div>
+                    <h3>技术笔记</h3>
+                    <p>记录日常开发中遇到的问题与解决方案，涵盖后端开发、DevOps、系统架构等领域，把踩过的坑变成有价值的经验。</p>
+                </div>
+                <div class="about-card">
+                    <div class="card-icon">🔧</div>
+                    <h3>项目实践</h3>
+                    <p>分享个人项目的设计思路与实现过程，从需求分析到技术选型，从编码实现到部署上线，完整记录每一个项目的诞生。</p>
+                </div>
+                <div class="about-card">
+                    <div class="card-icon">🌍</div>
+                    <h3>开源分享</h3>
+                    <p>热爱开源社区，乐于分享工具和解决方案。相信知识的力量在于传播，希望我的笔记能帮助到更多的开发者。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 最新文章区域 -->
+    <section class="posts-section" id="posts">
+        <div class="container">
+            <h2 class="section-title">最新文章</h2>
+            <p class="section-subtitle">最近写的一些技术笔记和思考</p>
+            <div class="post-list">
+                <a class="post-card" href="javascript:void(0)">
+                    <div class="post-meta">
+                        <span class="post-tag">DevOps</span>
+                        <span>2026-02-12</span>
+                    </div>
+                    <h3>使用 Let's Encrypt 为 Nginx 免费接入 HTTPS</h3>
+                    <p>详细记录如何通过 Certbot + Docker 自动化签发和续期 SSL 证书，让你的网站轻松拥有 HTTPS 加密连接，提升安全性和 SEO 排名。</p>
+                </a>
+                <a class="post-card" href="javascript:void(0)">
+                    <div class="post-meta">
+                        <span class="post-tag">架构设计</span>
+                        <span>2026-02-07</span>
+                    </div>
+                    <h3>从零搭建 Nginx 代理配置管理系统</h3>
+                    <p>基于 FastAPI + Nginx 构建一套可视化的反向代理管理系统，支持动态添加代理规则、健康检查、一键重载配置，告别手动编辑 nginx.conf 的日子。</p>
+                </a>
+                <a class="post-card" href="javascript:void(0)">
+                    <div class="post-meta">
+                        <span class="post-tag">Docker</span>
+                        <span>2026-02-05</span>
+                    </div>
+                    <h3>Docker Compose 多服务编排实战指南</h3>
+                    <p>深入探讨 Docker Compose 在实际项目中的应用，包括多阶段构建、服务依赖管理、健康检查配置、数据卷持久化等最佳实践。</p>
+                </a>
+                <a class="post-card" href="javascript:void(0)">
+                    <div class="post-meta">
+                        <span class="post-tag">Python</span>
+                        <span>2026-01-28</span>
+                    </div>
+                    <h3>FastAPI 异步编程与性能优化技巧</h3>
+                    <p>探索 FastAPI 框架的异步特性，从 async/await 基础到连接池管理，分享在高并发场景下的性能调优经验和实用技巧。</p>
+                </a>
+                <a class="post-card" href="javascript:void(0)">
+                    <div class="post-meta">
+                        <span class="post-tag">Linux</span>
+                        <span>2026-01-20</span>
+                    </div>
+                    <h3>服务器安全加固：从 SSH 到防火墙的完整方案</h3>
+                    <p>一份面向个人开发者的服务器安全指南，涵盖 SSH 密钥认证、fail2ban 防暴力破解、iptables/nftables 防火墙规则配置等关键安全措施。</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 技术栈区域 -->
+    <section class="tech-section" id="tech">
+        <div class="container">
+            <h2 class="section-title">技术栈</h2>
+            <p class="section-subtitle">我日常使用和关注的技术</p>
+            <div class="tech-grid">
+                <span class="tech-badge">Python</span>
+                <span class="tech-badge">FastAPI</span>
+                <span class="tech-badge">Nginx</span>
+                <span class="tech-badge">Docker</span>
+                <span class="tech-badge">Linux</span>
+                <span class="tech-badge">Git</span>
+                <span class="tech-badge">JavaScript</span>
+                <span class="tech-badge">Vue.js</span>
+                <span class="tech-badge">PostgreSQL</span>
+                <span class="tech-badge">Redis</span>
+                <span class="tech-badge">CI/CD</span>
+                <span class="tech-badge">Kubernetes</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-links">
+                <a href="#about">关于博客</a>
+                <a href="#posts">最新文章</a>
+                <a href="#tech">技术栈</a>
+                <a href="https://github.com" target="_blank">GitHub</a>
+            </div>
+            <p class="footer-copyright">© 2026 我的 Notebook · 用代码记录生活</p>
+            <p class="footer-copyright" style="margin-top:8px;"><a href="https://beian.miit.gov.cn/" target="_blank" style="color:#a0aec0;text-decoration:none;">浙ICP备2026009192号-1</a></p>
+        </div>
+    </footer>
+
+    <!-- 平滑滚动 -->
+    <script>
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (event) {
+                event.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    const navHeight = document.querySelector('nav').offsetHeight;
+                    const targetPosition = targetElement.offsetTop - navHeight;
+                    window.scrollTo({
+                        top: targetPosition,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+

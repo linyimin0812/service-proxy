@@ -10,6 +10,11 @@ handle_signal() {
 
 trap handle_signal TERM INT
 
+# 初始化 SSL 配置（生成空的或有效的 SSL 配置文件）
+if [ -x /ssl-renew.sh ]; then
+  /ssl-renew.sh init
+fi
+
 # Start original entrypoint - pass through CMD args so nginx starts correctly
 /docker-entrypoint.sh "$@" &
 MAIN_PID=$!
@@ -32,13 +37,23 @@ if command -v inotifywait >/dev/null 2>&1 && [ -f /etc/nginx/conf.d/proxy_rules.
   WATCH_PID=$!
 fi
 
+# 启动 SSL 证书自动续期（后台每12小时检查一次）
+if [ -x /ssl-renew.sh ] && [ -n "${SSL_DOMAIN:-}" ]; then
+  /ssl-renew.sh cron &
+  CRON_PID=$!
+fi
+
 # Wait for main process and keep container alive
 wait $MAIN_PID
 exit_code=$?
 
-# Kill watcher if it exists
+# Kill watcher and cron if they exist
 if [ -n "$WATCH_PID" ]; then
   kill $WATCH_PID 2>/dev/null || true
 fi
+if [ -n "$CRON_PID" ]; then
+  kill $CRON_PID 2>/dev/null || true
+fi
 
 exit $exit_code
+

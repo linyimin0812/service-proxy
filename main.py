@@ -38,7 +38,7 @@ class TokenAuthMiddleware(BaseHTTPMiddleware):
             if request_path == public_path or request_path.startswith(public_path + '/'):
                 return await call_next(request)
 
-        if request_path == '/' or request_path.startswith('/static'):
+        if request_path == '/' or request_path == '/admin' or request_path.startswith('/static'):
             return await call_next(request)
 
         auth_header = request.headers.get('Authorization', '')
@@ -87,7 +87,12 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/")
-async def root():
+async def home():
+    """返回博客首页"""
+    return FileResponse("static/home.html")
+
+@app.get("/admin")
+async def admin():
     """返回管理页面"""
     return FileResponse("static/index.html")
 
@@ -125,4 +130,5 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
+
 

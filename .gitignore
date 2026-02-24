@@ -42,6 +42,9 @@ config/backups/
 .DS_Store
 Thumbs.db
 
+# Jupyter
+.ipynb_checkpoints/
+
 # uv
 .python-version
 uv.lock

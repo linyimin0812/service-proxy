@@ -91,7 +91,7 @@ docker-compose logs -f
 python3 -m venv ~/jupyter-venv
 source ~/jupyter-venv/bin/activate
 pip install jupyterlab
-nohup jupyter lab --ip=0.0.0.0 --port=8080 --no-browser --allow-root --ServerApp.base_url='/jupyter' --ServerApp.allow_origin='*' --ServerApp.allow_remote_access=True --ServerApp.trust_xheaders=True --notebook-dir=/root/ > /var/log/jupyter.log 2>&1 &
+nohup jupyter lab --ip=0.0.0.0 --port=8080 --no-browser --allow-root --ServerApp.base_url='/jupyter' --ServerApp.allow_origin='*' --ServerApp.allow_remote_access=True --ServerApp.trust_xheaders=True --notebook-dir=/root/ --ContentsManager.allow_hidden=True > /var/log/jupyter.log 2>&1 &
 
 # 5. 启动kubectl proxy
 nohup kubectl proxy --address 0.0.0.0 --port 8001 --accept-hosts '.*' > /var/log/kubectl-proxy.log 2>&1 &

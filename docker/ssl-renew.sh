@@ -18,16 +18,40 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [SSL] $1"
 }
 
+# 解析逗号分隔的域名列表，返回第一个域名（主域名）
+get_primary_domain() {
+    echo "${SSL_DOMAIN}" | tr ',' '\n' | head -1 | tr -d ' '
+}
+
+# 将逗号分隔的域名列表转为空格分隔（用于 server_name）
+get_all_domains_space() {
+    echo "${SSL_DOMAIN}" | tr ',' ' ' | sed 's/  */ /g'
+}
+
+# 将逗号分隔的域名列表转为 certbot -d 参数
+get_certbot_domain_args() {
+    local args=""
+    local domain
+    for domain in $(echo "${SSL_DOMAIN}" | tr ',' ' '); do
+        domain=$(echo "$domain" | sed 's/^ *//;s/ *$//')
+        [ -n "$domain" ] && args="${args} -d ${domain}"
+    done
+    echo "$args"
+}
+
 generate_ssl_nginx_config() {
-    local domain="$1"
-    local cert_path="/etc/letsencrypt/live/${domain}"
+    local primary_domain
+    primary_domain=$(get_primary_domain)
+    local all_domains
+    all_domains=$(get_all_domains_space)
+    local cert_path="/etc/letsencrypt/live/${primary_domain}"
 
     if [ ! -f "${cert_path}/fullchain.pem" ]; then
         log "证书文件不存在: ${cert_path}/fullchain.pem，跳过 SSL 配置生成"
         return 1
     fi
 
-    log "生成 SSL Nginx 配置..."
+    log "生成 SSL Nginx 配置（域名: ${all_domains}）..."
 
     # 生成 HTTP -> HTTPS 重定向配置（使用 if 指令避免与已有 location / 冲突）
     cat > "${SSL_REDIRECT_CONF}" <<EOF
@@ -48,9 +72,10 @@ EOF
     # 生成 HTTPS server 配置
     cat > "${SSL_SERVER_CONF}" <<EOF
 # 自动生成 - HTTPS 服务器配置
+# 支持域名: ${all_domains}
 server {
     listen 443 ssl http2;
-    server_name ${domain};
+    server_name ${all_domains};
 
     # SSL 证书
     ssl_certificate ${cert_path}/fullchain.pem;
@@ -136,20 +161,23 @@ issue_certificate() {
         exit 1
     fi
 
+    local domain_args
+    domain_args=$(get_certbot_domain_args)
     log "开始为域名 ${SSL_DOMAIN} 签发 SSL 证书..."
+    log "certbot 参数:${domain_args}"
 
-    certbot certonly \
+    eval certbot certonly \
         --webroot \
-        --webroot-path="${WEBROOT_PATH}" \
-        --email "${SSL_EMAIL}" \
+        --webroot-path=\"${WEBROOT_PATH}\" \
+        --email \"${SSL_EMAIL}\" \
         --agree-tos \
         --no-eff-email \
         --force-renewal \
-        -d "${SSL_DOMAIN}"
+        ${domain_args}
 
     if [ $? -eq 0 ]; then
         log "证书签发成功！"
-        generate_ssl_nginx_config "${SSL_DOMAIN}"
+        generate_ssl_nginx_config
         nginx -s reload
         log "Nginx 已重载，HTTPS 已启用"
     else
@@ -167,7 +195,7 @@ renew_certificate() {
         log "证书续期检查完成"
         # 如果有域名配置，重新生成配置并重载
         if [ -n "${SSL_DOMAIN}" ]; then
-            generate_ssl_nginx_config "${SSL_DOMAIN}"
+            generate_ssl_nginx_config
             nginx -s reload
             log "Nginx 已重载"
         fi
@@ -194,11 +222,13 @@ init_ssl() {
         return
     fi
 
-    # 检查证书是否已存在
-    local cert_path="/etc/letsencrypt/live/${SSL_DOMAIN}"
+    # 检查证书是否已存在（使用第一个域名作为主域名查找证书）
+    local primary_domain
+    primary_domain=$(get_primary_domain)
+    local cert_path="/etc/letsencrypt/live/${primary_domain}"
     if [ -f "${cert_path}/fullchain.pem" ]; then
-        log "检测到已有证书: ${SSL_DOMAIN}，启用 HTTPS"
-        generate_ssl_nginx_config "${SSL_DOMAIN}"
+        log "检测到已有证书: ${primary_domain}，启用 HTTPS（域名: $(get_all_domains_space)）"
+        generate_ssl_nginx_config
     else
         log "未检测到证书，以 HTTP 模式启动。请运行 'docker exec <容器名> /ssl-renew.sh issue' 签发证书"
         clear_ssl_nginx_config
@@ -227,4 +257,5 @@ case "${1:-init}" in
         exit 1
         ;;
 esac
+
 

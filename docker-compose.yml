@@ -10,7 +10,7 @@ services:
       - PYTHONUNBUFFERED=1
       - CONFIG_PATH=/app/config
       - NGINX_CONTAINER_NAME=nginx-proxy-manager-nginx
-      - ACCESS_TOKEN=changeme
+      - ACCESS_TOKEN=${ACCESS_TOKEN:-changeme}
     volumes:
       - ./config:/app/config:rw
       - /var/run/docker.sock:/var/run/docker.sock
@@ -88,5 +88,6 @@ volumes:
     name: nginx-proxy-certbot-var
   certbot_webroot:
     name: nginx-proxy-certbot-webroot
+
 
 

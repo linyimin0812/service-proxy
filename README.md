@@ -96,6 +96,9 @@ nohup jupyter lab --ip=0.0.0.0 --port=8080 --no-browser --allow-root --ServerApp
 # 5. 启动kubectl proxy
 nohup kubectl proxy --address 0.0.0.0 --port 8001 --accept-hosts '.*' > /var/log/kubectl-proxy.log 2>&1 &
 
+# 6. 服务监控信息推送
+nohup python3 /root/service-proxy/scripts/monitor_ntfy.py > /var/log/monitor_ntfy.log 2>&1 &
+
 ```
 
 **访问服务**：

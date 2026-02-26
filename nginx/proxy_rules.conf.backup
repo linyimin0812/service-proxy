@@ -1,6 +1,6 @@
 # NGINX 代理配置文件
 # 由 NGINX 代理配置管理系统自动生成
-# 生成时间: 2026-02-12T15:15:37.783830
+# 生成时间: 2026-02-24T09:55:45.419282
 
 
 # 规则: /kubectl -> host.docker.internal:8001
@@ -33,9 +33,8 @@ location /kubectl/ {
 # 规则: /jupyter -> host.docker.internal:8080
 # 描述: jupyter
 
-# 保留路径前缀模式（适用于 Jupyter 等需要 base_url 的服务）
 location /jupyter/ {
-    proxy_pass http://host.docker.internal:8080;
+    proxy_pass http://host.docker.internal:8080/;
 
 
     proxy_set_header Host $host;

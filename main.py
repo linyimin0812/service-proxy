@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 ACCESS_TOKEN = os.getenv('ACCESS_TOKEN', 'changeme')
 
-PUBLIC_PATHS = ['/health', '/api/auth/verify', '/api/monitor']
+PUBLIC_PATHS = ['/health', '/api/auth/verify', '/api/monitor', '/assets']
 
 
 class TokenAuthMiddleware(BaseHTTPMiddleware):
